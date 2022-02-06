@@ -63,7 +63,21 @@ contract("", () => {
       [toWei(100), toWei(50)],
       [toWei("0.0025"), toWei("46")],
       [3000, 3000] */
-    const gas = await SwapzillaCore_instance.bulkSwapERC20.estimateGas(
+    const tx1 = await SwapzillaCore_instance.bulkSwapERC20(
+      wethAddress,
+      [compAddress, batAddress, chainAddress, manaAddress, ampAddress],
+      [toWei(10), toWei(10), toWei(10), toWei(10), toWei(10)],
+      [
+        toWei("10000"),
+        toWei("10000"),
+        toWei("10000"),
+        toWei("10000"),
+        toWei("10000"),
+      ],
+      [3000, 3000, 3000, 3000, 3000],
+      { from: account }
+    );
+    const tx2 = await SwapzillaCore_instance.bulkSwapERC20(
       wethAddress,
       [compAddress, batAddress, chainAddress, manaAddress, ampAddress],
       [toWei(10), toWei(10), toWei(10), toWei(10), toWei(10)],
@@ -81,7 +95,9 @@ contract("", () => {
     const acct_comp1 = await comp.methods.balanceOf(account).call();
     const acct_weth1 = await weth.methods.balanceOf(account).call();
     console.log(
-      `bat balance: ${acct_bat1} comp balance: ${acct_comp1} balance weth: ${acct_weth1} gas ${gas}`
+      `bat balance: ${acct_bat1} comp balance: ${acct_comp1} balance weth: ${acct_weth1}`
     );
+    console.log("Gas used Tx1", tx1.receipt.gasUsed / 5);
+    console.log("Gas used Tx2", tx2.receipt.gasUsed / 5);
   });
 });

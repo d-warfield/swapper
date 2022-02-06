@@ -20,6 +20,11 @@ contract SwapzillaCore {
         uint24[] calldata poolFee
     ) external {
         uint256 length = tokensOut.length;
+        TransferHelper.safeApprove(
+            tokenIn,
+            address(swapRouter),
+            type(uint256).max
+        );
 
         for (uint256 i = 0; i < length; i++) {
             swapExactOutputSingle(
@@ -30,6 +35,7 @@ contract SwapzillaCore {
                 poolFee[i]
             );
         }
+        TransferHelper.safeApprove(tokenIn, address(swapRouter), 0);
     }
 
     /// @notice swapExactOutputSingle swaps a minimum possible amount of TOKEN_IN for a fixed amount of TOKEN_OUT.
@@ -55,11 +61,6 @@ contract SwapzillaCore {
 
         // Approve the router to spend the specifed `amountInMaximum` of TOKEN_IN.
         // In production, you should choose the maximum amount to spend based on oracles or other data sources to acheive a better swap.
-        TransferHelper.safeApprove(
-            tokenIn,
-            address(swapRouter),
-            amountInMaximum
-        );
 
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
             .ExactOutputSingleParams({
@@ -79,7 +80,6 @@ contract SwapzillaCore {
         // For exact output swaps, the amountInMaximum may not have all been spent.
         // If the actual amount spent (amountIn) is less than the specified maximum amount, we must refund the msg.sender and approve the swapRouter to spend 0.
         if (amountIn < amountInMaximum) {
-            TransferHelper.safeApprove(tokenIn, address(swapRouter), 0);
             TransferHelper.safeTransfer(
                 tokenIn,
                 msg.sender,

@@ -4,12 +4,21 @@ pragma abicoder v2;
 
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract SwapzillaCore {
+contract SwapzillaCore is Ownable {
     ISwapRouter public immutable swapRouter;
+    mapping(address => bool) whiteListedToken;
 
     constructor() {
         swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+    }
+
+    function updateTokenwhitelist(address token, bool state)
+        external
+        onlyOwner
+    {
+        whiteListedToken[token] = state;
     }
 
     function bulkSwapERC20(
@@ -25,7 +34,7 @@ contract SwapzillaCore {
             address(swapRouter),
             type(uint256).max
         );
-
+        require(whiteListedToken[tokenIn], "token not white listed");
         for (uint256 i = 0; i < length; i++) {
             swapExactOutputSingle(
                 tokenIn,

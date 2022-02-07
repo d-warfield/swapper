@@ -26,6 +26,8 @@ contract("", () => {
 
     SwapzillaCore_instance = await SwapzillaCore.new();
 
+    await SwapzillaCore_instance.updateTokenwhitelist(wethAddress, true);
+
     // console.log("contract", SwapzillaCore_instance);
     const IU = await SwapzillaCore_instance.swapRouter();
     // console.log(IU);

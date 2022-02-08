@@ -5,6 +5,7 @@ pragma abicoder v2;
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SwapzillaCore is Ownable {
     ISwapRouter public immutable swapRouter;
@@ -14,6 +15,7 @@ contract SwapzillaCore is Ownable {
         swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
         for (uint256 i = 0; i < tokenIn.length; i++) {
             updateWhitelistTokenIn(tokenIn[i], true);
+            safeApproveRouter(tokenIn[i]);
         }
     }
 
@@ -36,7 +38,7 @@ contract SwapzillaCore is Ownable {
                 poolFee
             );
         }
-        TransferHelper.safeApprove(tokenIn, address(swapRouter), 0);
+        // TransferHelper.safeApprove(tokenIn, address(swapRouter), 0);
     }
 
     /// @notice swapExactOutputSingle swaps a minimum possible amount of TOKEN_IN for a fixed amount of TOKEN_OUT.
@@ -45,6 +47,7 @@ contract SwapzillaCore is Ownable {
     /// @param amountOut The exact amount of TOKEN_OUT to receive from the swap.
     /// @param amountInMaximum The amount of TOKEN_IN we are willing to spend to receive the specified amount of TOKEN_OUT.
     /// @return amountIn The amount of TOKEN_IN actually spent in the swap.
+
     function swapExactOutputSingle(
         address tokenIn,
         address tokenOut,
@@ -62,7 +65,6 @@ contract SwapzillaCore is Ownable {
 
         // Approve the router to spend the specifed `amountInMaximum` of TOKEN_IN.
         // In production, you should choose the maximum amount to spend based on oracles or other data sources to acheive a better swap.
-
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
             .ExactOutputSingleParams({
                 tokenIn: tokenIn,
@@ -89,20 +91,26 @@ contract SwapzillaCore is Ownable {
         }
     }
 
-    function safeApproveRouter(address[] calldata tokenIn) public onlyOwner {
-        for (uint256 i = 0; i < tokenIn.length; i++) {
-            TransferHelper.safeApprove(
-                tokenIn[i],
-                address(swapRouter),
-                type(uint256).max
-            );
-        }
+    function safeApproveRouter(address tokenIn) public onlyOwner {
+        TransferHelper.safeApprove(
+            tokenIn,
+            address(swapRouter),
+            type(uint256).max
+        );
     }
 
     function updateWhitelistTokenIn(address tokenIn, bool isWhitelisted)
         public
         onlyOwner
     {
-        whitelisted[tokenIn] = whitelist;
+        whitelisted[tokenIn] = isWhitelisted;
+    }
+
+    function rescueTokens(
+        address tokenAddress,
+        uint256 amount,
+        address recipient
+    ) public onlyOwner {
+        IERC20(tokenAddress).transfer(recipient, amount);
     }
 }

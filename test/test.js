@@ -24,7 +24,7 @@ contract("", () => {
     mana = new web3.eth.Contract(wethAPI, manaAddress);
     amp = new web3.eth.Contract(wethAPI, ampAddress);
 
-    SwapzillaCore_instance = await SwapzillaCore.new();
+    SwapzillaCore_instance = await SwapzillaCore.new([wethAddress]);
 
     // console.log("contract", SwapzillaCore_instance);
     const IU = await SwapzillaCore_instance.swapRouter();
@@ -74,7 +74,7 @@ contract("", () => {
         toWei("10000"),
         toWei("10000"),
       ],
-      [3000, 3000, 3000, 3000, 3000],
+      3000,
       { from: account }
     );
     const tx2 = await SwapzillaCore_instance.bulkSwapERC20(

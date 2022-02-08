@@ -5,20 +5,18 @@ pragma abicoder v2;
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SwapzillaCore is Ownable {
     ISwapRouter public immutable swapRouter;
-    mapping(address => bool) whiteListedToken;
+    mapping(address => bool) public whitelisted;
 
-    constructor() {
+    constructor(address[] memory tokenIn) {
         swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
-    }
-
-    function updateTokenwhitelist(address token, bool state)
-        external
-        onlyOwner
-    {
-        whiteListedToken[token] = state;
+        for (uint256 i = 0; i < tokenIn.length; i++) {
+            whitelisted[tokenIn[i]] = true;
+            safeApproveRouter(tokenIn[i]);
+        }
     }
 
     function bulkSwapERC20(
@@ -26,25 +24,35 @@ contract SwapzillaCore is Ownable {
         address[] calldata tokensOut,
         uint256[] calldata amountsOut,
         uint256[] calldata amountsInMaximum,
-        uint24[] calldata poolFee
+        uint256 totalAmountInMaximum,
+        uint256 poolFee
     ) external {
+        require(whitelisted[tokenIn], "This token is not approved");
         uint256 length = tokensOut.length;
-        TransferHelper.safeApprove(
+        TransferHelper.safeTransferFrom(
             tokenIn,
-            address(swapRouter),
-            type(uint256).max
+            msg.sender,
+            address(this),
+            totalAmountInMaximum
         );
-        require(whiteListedToken[tokenIn], "token not white listed");
+        uint256 amountIn;
         for (uint256 i = 0; i < length; i++) {
-            swapExactOutputSingle(
+            amountIn += swapExactOutputSingle(
                 tokenIn,
                 tokensOut[i],
                 amountsOut[i],
                 amountsInMaximum[i],
-                poolFee[i]
+                poolFee
             );
         }
-        TransferHelper.safeApprove(tokenIn, address(swapRouter), 0);
+        require(amountIn <= totalAmountInMaximum, "Spent");
+        if (amountIn < totalAmountInMaximum) {
+            TransferHelper.safeTransfer(
+                tokenIn,
+                msg.sender,
+                totalAmountInMaximum - amountIn
+            );
+        }
     }
 
     /// @notice swapExactOutputSingle swaps a minimum possible amount of TOKEN_IN for a fixed amount of TOKEN_OUT.
@@ -53,29 +61,20 @@ contract SwapzillaCore is Ownable {
     /// @param amountOut The exact amount of TOKEN_OUT to receive from the swap.
     /// @param amountInMaximum The amount of TOKEN_IN we are willing to spend to receive the specified amount of TOKEN_OUT.
     /// @return amountIn The amount of TOKEN_IN actually spent in the swap.
+
     function swapExactOutputSingle(
         address tokenIn,
         address tokenOut,
         uint256 amountOut,
         uint256 amountInMaximum,
-        uint24 poolFee
+        uint256 poolFee
     ) internal returns (uint256 amountIn) {
-        // Transfer the specified amount of TOKEN_IN to this contract.
-        TransferHelper.safeTransferFrom(
-            tokenIn,
-            msg.sender,
-            address(this),
-            amountInMaximum
-        );
-
-        // Approve the router to spend the specifed `amountInMaximum` of TOKEN_IN.
         // In production, you should choose the maximum amount to spend based on oracles or other data sources to acheive a better swap.
-
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
             .ExactOutputSingleParams({
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
-                fee: poolFee,
+                fee: uint24(poolFee),
                 recipient: msg.sender,
                 deadline: block.timestamp,
                 amountOut: amountOut,
@@ -88,12 +87,28 @@ contract SwapzillaCore is Ownable {
 
         // For exact output swaps, the amountInMaximum may not have all been spent.
         // If the actual amount spent (amountIn) is less than the specified maximum amount, we must refund the msg.sender and approve the swapRouter to spend 0.
-        if (amountIn < amountInMaximum) {
-            TransferHelper.safeTransfer(
-                tokenIn,
-                msg.sender,
-                amountInMaximum - amountIn
-            );
-        }
+    }
+
+    function safeApproveRouter(address tokenIn) public onlyOwner {
+        TransferHelper.safeApprove(
+            tokenIn,
+            address(swapRouter),
+            type(uint256).max
+        );
+    }
+
+    function updateWhitelistTokenIn(address tokenIn, bool isWhitelisted)
+        public
+        onlyOwner
+    {
+        whitelisted[tokenIn] = isWhitelisted;
+    }
+
+    function rescueTokens(
+        address tokenAddress,
+        uint256 amount,
+        address recipient
+    ) public onlyOwner {
+        IERC20(tokenAddress).transfer(recipient, amount);
     }
 }

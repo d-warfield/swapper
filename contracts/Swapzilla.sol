@@ -13,7 +13,7 @@ contract SwapzillaCore is Ownable {
     constructor(address[] memory tokenIn) {
         swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
         for (uint256 i = 0; i < tokenIn.length; i++) {
-            whitelistTokenIn(tokenIn[i]);
+            updateWhitelistTokenIn(tokenIn[i], true);
         }
     }
 
@@ -99,7 +99,10 @@ contract SwapzillaCore is Ownable {
         }
     }
 
-    function whitelistTokenIn(address tokenIn) public onlyOwner {
-        whitelisted[tokenIn] = true;
+    function updateWhitelistTokenIn(address tokenIn, bool isWhitelisted)
+        public
+        onlyOwner
+    {
+        whitelisted[tokenIn] = whitelist;
     }
 }

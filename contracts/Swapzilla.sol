@@ -4,12 +4,17 @@ pragma abicoder v2;
 
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract SwapzillaCore {
+contract SwapzillaCore is Ownable {
     ISwapRouter public immutable swapRouter;
+    mapping(address => bool) public whitelisted;
 
-    constructor() {
+    constructor(address[] memory tokenIn) {
         swapRouter = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+        for (uint256 i = 0; i < tokenIn.length; i++) {
+            whitelistTokenIn(tokenIn[i]);
+        }
     }
 
     function bulkSwapERC20(
@@ -17,14 +22,10 @@ contract SwapzillaCore {
         address[] calldata tokensOut,
         uint256[] calldata amountsOut,
         uint256[] calldata amountsInMaximum,
-        uint24[] calldata poolFee
+        uint256 poolFee
     ) external {
+        require(whitelisted[tokenIn], "This token is not approved");
         uint256 length = tokensOut.length;
-        TransferHelper.safeApprove(
-            tokenIn,
-            address(swapRouter),
-            type(uint256).max
-        );
 
         for (uint256 i = 0; i < length; i++) {
             swapExactOutputSingle(
@@ -32,7 +33,7 @@ contract SwapzillaCore {
                 tokensOut[i],
                 amountsOut[i],
                 amountsInMaximum[i],
-                poolFee[i]
+                poolFee
             );
         }
         TransferHelper.safeApprove(tokenIn, address(swapRouter), 0);
@@ -49,7 +50,7 @@ contract SwapzillaCore {
         address tokenOut,
         uint256 amountOut,
         uint256 amountInMaximum,
-        uint24 poolFee
+        uint256 poolFee
     ) internal returns (uint256 amountIn) {
         // Transfer the specified amount of TOKEN_IN to this contract.
         TransferHelper.safeTransferFrom(
@@ -66,7 +67,7 @@ contract SwapzillaCore {
             .ExactOutputSingleParams({
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
-                fee: poolFee,
+                fee: uint24(poolFee),
                 recipient: msg.sender,
                 deadline: block.timestamp,
                 amountOut: amountOut,
@@ -86,5 +87,19 @@ contract SwapzillaCore {
                 amountInMaximum - amountIn
             );
         }
+    }
+
+    function safeApproveRouter(address[] calldata tokenIn) public onlyOwner {
+        for (uint256 i = 0; i < tokenIn.length; i++) {
+            TransferHelper.safeApprove(
+                tokenIn[i],
+                address(swapRouter),
+                type(uint256).max
+            );
+        }
+    }
+
+    function whitelistTokenIn(address tokenIn) public onlyOwner {
+        whitelisted[tokenIn] = true;
     }
 }

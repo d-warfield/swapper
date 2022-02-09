@@ -69,7 +69,6 @@ contract SwapzillaCore is Ownable {
         uint256 amountInMaximum,
         uint256 poolFee
     ) internal returns (uint256 amountIn) {
-        // In production, you should choose the maximum amount to spend based on oracles or other data sources to acheive a better swap.
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
             .ExactOutputSingleParams({
                 tokenIn: tokenIn,
@@ -84,9 +83,6 @@ contract SwapzillaCore is Ownable {
 
         // Executes the swap returning the amountIn needed to spend to receive the desired amountOut.
         amountIn = swapRouter.exactOutputSingle(params);
-
-        // For exact output swaps, the amountInMaximum may not have all been spent.
-        // If the actual amount spent (amountIn) is less than the specified maximum amount, we must refund the msg.sender and approve the swapRouter to spend 0.
     }
 
     function safeApproveRouter(address tokenIn) public onlyOwner {
@@ -106,8 +102,8 @@ contract SwapzillaCore is Ownable {
 
     function rescueTokens(
         address tokenAddress,
-        uint256 amount,
-        address recipient
+        address recipient,
+        uint256 amount
     ) public onlyOwner {
         IERC20(tokenAddress).transfer(recipient, amount);
     }

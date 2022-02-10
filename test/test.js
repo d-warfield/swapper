@@ -1,4 +1,4 @@
-const SwapzillaCore = artifacts.require("SwapzillaCore");
+//const SwapzillaCore = artifacts.require("SwapzillaCore");
 let swapzilla;
 let weth, comp, bat;
 const wethAPI = require("./daiAbi.json");
@@ -85,11 +85,11 @@ contract("", () => {
         "300000000000000",
         3000
       )
-      .send({ from: account });
+      .send({ from: account ,gas:'3100000'}); // ELB update it by adding gas flag here
 
     const acct_bat2 = await bat.methods.balanceOf(account).call();
 
     console.log(`AFTER BAT BALANCE: ${acct_bat2}`);
-    console.log("Gas used Tx1", tx1.receipt.gasUsed);
+    console.log("Gas used Tx1", tx1.gasUsed); // ELB updated from tx1.receipt.gasUsed to tx1.gasUsed
   });
 });
